@@ -89,7 +89,7 @@ def visualize_scalars(vis, scalars, names, title, iteration):
     # Convert scalar tensors to numpy arrays.
     scalars, names = list(scalars), list(names)
     scalars = [s.cpu() if isinstance(s, CUDATensor) else s for s in scalars]
-    scalars = [s.detach().numpy() if hasattr(s, 'numpy') else
+    scalars = [s.cpu().data.detach().numpy() if hasattr(s, 'numpy') else
                np.array([s]) for s in scalars]
     multi = len(scalars) > 1
     num = len(scalars)

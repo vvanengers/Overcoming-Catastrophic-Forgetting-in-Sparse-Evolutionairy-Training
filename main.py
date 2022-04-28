@@ -11,6 +11,7 @@ import utils
 import os
 
 parser = ArgumentParser('EWC PyTorch Implementation')
+parser.add_argument('--model', type=str, default='MLP')
 parser.add_argument('--hidden-size', type=int, default=400)
 parser.add_argument('--hidden-layer-num', type=int, default=2)
 parser.add_argument('--hidden-dropout-prob', type=float, default=.5)
@@ -29,6 +30,9 @@ parser.add_argument('--no-gpus', action='store_false', dest='cuda')
 parser.add_argument('--eval-log-interval', type=int, default=250)
 parser.add_argument('--loss-log-interval', type=int, default=250)
 parser.add_argument('--consolidate', action='store_true')
+parser.add_argument('--ascTopologyChangePeriod', type=int, default=200)
+parser.add_argument('--zeta', type=float, default=0.1)
+parser.add_argument('--affix', type=str, default='')
 
 
 if __name__ == '__main__':
@@ -36,6 +40,7 @@ if __name__ == '__main__':
 
     # decide whether to use cuda or not.
     cuda = torch.cuda.is_available() and args.cuda
+    print(f'cuda available: {torch.cuda.is_available()}')
 
     # generate permutations for the tasks.
     np.random.seed(args.random_seed)
@@ -51,18 +56,30 @@ if __name__ == '__main__':
     test_datasets = [
         get_dataset('mnist', train=False, permutation=p) for p in permutations
     ]
-
+    if args.model == 'SETMLP':
     # prepare the model.
-    model = SETMLP(
-        DATASET_CONFIGS['mnist']['size']**2,
-        DATASET_CONFIGS['mnist']['classes'],
-        hidden_size=args.hidden_size,
-        hidden_layer_num=args.hidden_layer_num,
-        hidden_dropout_prob=args.hidden_dropout_prob,
-        input_dropout_prob=args.input_dropout_prob,
-        lamb_func=args.lamda,
-    )
-
+        model = SETMLP(
+            DATASET_CONFIGS['mnist']['size']**2,
+            DATASET_CONFIGS['mnist']['classes'],
+            hidden_size=args.hidden_size,
+            hidden_layer_num=args.hidden_layer_num,
+            hidden_dropout_prob=args.hidden_dropout_prob,
+            input_dropout_prob=args.input_dropout_prob,
+            lamb_func=args.lamda,
+            ascTopologyChangePeriod=args.ascTopologyChangePeriod,
+            zeta=args.zeta,
+            affix=args.affix
+        )
+    elif args.model == 'MLP':
+        model = MLP(
+            DATASET_CONFIGS['mnist']['size'] ** 2,
+            DATASET_CONFIGS['mnist']['classes'],
+            hidden_size=args.hidden_size,
+            hidden_layer_num=args.hidden_layer_num,
+            hidden_dropout_prob=args.hidden_dropout_prob,
+            input_dropout_prob=args.input_dropout_prob,
+            lamb_func=args.lamda,
+        )
     # initialize the parameters.
     utils.xavier_initialize(model)
 

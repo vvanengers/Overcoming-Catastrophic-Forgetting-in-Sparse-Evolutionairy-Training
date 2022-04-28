@@ -16,7 +16,6 @@ class MLP(nn.Module):
                  lamb_func=40):
         # Configurations.
         super().__init__()
-        self.model_name = 'FC-MLP'
         self.input_size = input_size
         self.input_dropout_prob = input_dropout_prob
         self.hidden_size = hidden_size
@@ -40,13 +39,12 @@ class MLP(nn.Module):
     @property
     def name(self):
         return (
-            '{name}'
+            'MLP'
             '-lambda{lamda}'
             '-in{input_size}-out{output_size}'
             '-h{hidden_size}x{hidden_layer_num}'
             '-dropout_in{input_dropout_prob}_hidden{hidden_dropout_prob}'
         ).format(
-            name=self.model_name,
             lamda=self.lamb_func,
             input_size=self.input_size,
             output_size=self.output_size,
@@ -119,5 +117,5 @@ class MLP(nn.Module):
     def _is_on_cuda(self):
         return next(self.parameters()).is_cuda
 
-    def adapt_connectivity(self):
+    def adapt_connectivity(self, batch_index):
         pass

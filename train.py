@@ -67,7 +67,7 @@ def train(model, train_datasets, test_datasets, epochs_per_task=10,
                 loss = ce_loss + ewc_loss
                 loss.backward()
                 optimizer.step()
-                model.adapt_connectivity(epoch)
+                model.adapt_connectivity(epoch * batch_index * batch_size)
 
                 # calculate the training precision.
                 _, predicted = scores.max(1)

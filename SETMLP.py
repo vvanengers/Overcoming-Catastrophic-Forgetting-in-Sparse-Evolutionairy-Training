@@ -14,17 +14,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class SETMLP(model.MLP):
     def __init__(self, input_size, output_size, hidden_size=400, hidden_layer_num=2,
                  hidden_dropout_prob=.5,
-                 input_dropout_prob=.2, lamb_func=40, zeta=0.1, theta=1, ascTopologyChangePeriod=20, earlyStopTopologyChangeIteration = 1e9):
+                 input_dropout_prob=.2, lamb_func=40, zeta=0.1, theta=1, epsilonHid1=50, epsilonHid2=50, ascTopologyChangePeriod=200, earlyStopTopologyChangeIteration = 1e9, affix=''):
         super().__init__(input_size, output_size, hidden_size=hidden_size, hidden_layer_num=hidden_layer_num,
                          hidden_dropout_prob=hidden_dropout_prob,
                          input_dropout_prob=input_dropout_prob, lamb_func=lamb_func)
-        self.model_name = 'SET-MLP'
         self.lastTopologyChangeCritic = False
         self.zeta = zeta
         self.theta = theta
+        self.epsilon = epsilonHid1
         self.ascTopologyChangePeriod = ascTopologyChangePeriod
         self.earlyStopTopologyChangeIteration = earlyStopTopologyChangeIteration
-        epsilonHid1, epsilonHid2 = input_size, output_size
+        self.affix = affix
         # Layers
         self.l1 = nn.Linear(input_size, hidden_size)
         [self.noPar1, self.mask1] = sp.initializeEpsilonWeightsMask("actor first layer", epsilonHid1, input_size,
@@ -46,18 +46,45 @@ class SETMLP(model.MLP):
 
         self.l4 = nn.Linear(hidden_size, output_size)
 
+    @property
+    def name(self):
+        return (
+            'SET-MLP'
+            '-lambda{lamda}'
+            '-in{input_size}-out{output_size}'
+            '-h{hidden_size}x{hidden_layer_num}'
+            '-dropout_in{input_dropout_prob}_hidden{hidden_dropout_prob}'
+            '-ascTopologyChangePeriod{ascTopologyChangePeriod}'
+            '-epsilon{epsilon}'
+            '-zeta{zeta}'
+            '-{affix}'
+
+        ).format(
+            lamda=self.lamb_func,
+            input_size=self.input_size,
+            output_size=self.output_size,
+            hidden_size=self.hidden_size,
+            hidden_layer_num=self.hidden_layer_num,
+            input_dropout_prob=self.input_dropout_prob,
+            hidden_dropout_prob=self.hidden_dropout_prob,
+            ascTopologyChangePeriod=self.ascTopologyChangePeriod,
+            epsilon=self.epsilon,
+            zeta=self.zeta,
+            affix=self.affix,
+        )
+
     def forward(self, x):
         self.layers = nn.ModuleList([
-            self.l1, nn.ReLU(),
-            self.l2, nn.ReLU(),
-            self.l3, nn.ReLU(),
+            self.l1, nn.ReLU(), #nn.Dropout(self.input_dropout_prob),
+            self.l2, nn.ReLU(), #nn.Dropout(self.input_dropout_prob),
+            self.l3, nn.ReLU(), #nn.Dropout(self.input_dropout_prob),
             self.l4
         ])
         return super().forward(x)
 
     def adapt_connectivity(self, total_it):
         # Adapt the sparse connectivity
-        if total_it % self.ascTopologyChangePeriod == 2:
+        if total_it % self.ascTopologyChangePeriod == 0:
             if total_it > self.earlyStopTopologyChangeIteration:
                 self.lastTopologyChangeCritic = True
             [self.mask1, ascStats1] = sp.changeConnectivitySET(self.l1.weight.data.cpu().numpy(),
